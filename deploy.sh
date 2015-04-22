@@ -1,7 +1,7 @@
 FILES="telemetry_index_ping.js telemetry_schema.py telemetry_v2_schema.json"
 
 aws s3 cp s3://telemetry-published-v2/telemetry_schema.json telemetry_v2_schema.json
-wget -N https://raw.githubusercontent.com/vitillo/python_moztelemetry/master/moztelemetry/telemetry_schema.py
+wget -N https://raw.githubusercontent.com/mozilla/telemetry-tools/master/telemetry/telemetry_schema.py
 zip -jr lambda.zip $FILES
 
 aws lambda upload-function \

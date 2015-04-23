@@ -4,12 +4,49 @@
 
 var AWS = require('aws-sdk');
 var exec = require('child_process').exec;
+var uuid = require('node-uuid');
 var simpledb = new AWS.SimpleDB();
+var cloudwatchlogs = new AWS.CloudWatchLogs();
 
 var v2DomainPrefix = "telemetry_v2_";
+var logGroupName = "/aws/lambda/telemetry_index_ping"
 
 function formatError(key, error){
   return "Filename: " + key + " Error: " + error;
+}
+
+function logErrorAndExit(context, key, error) {
+  var message = formatError(key, error);
+  var logStreamName = "Errors_" + uuid.v1();
+  var params = {
+    logGroupName: logGroupName,
+    logStreamName: logStreamName
+  }
+
+  cloudwatchlogs.createLogStream(params, function(err, data) {
+    if (err) {
+      console.log(err, err.stack);
+      context.fail(message);
+      return;
+    }
+
+    params = {
+      logEvents: [{
+        message: message,
+        timestamp: new Date().getTime()
+      }],
+      logGroupName: logGroupName,
+      logStreamName: logStreamName
+    };
+
+    cloudwatchlogs.putLogEvents(params, function(err, data) {
+      if (err) {
+        console.log(err, err.stack);
+      }
+
+      context.fail(message);
+    });
+  });
 }
 
 exports.handler = function(event, context) {
@@ -18,7 +55,7 @@ exports.handler = function(event, context) {
 
   exec('python telemetry_schema.py telemetry_v2_schema.json ' + key, function callback(error, stdout, stderr){
     if (error) {
-      context.fail(formatError(key, stderr));
+      logErrorAndExit(context, key, stderr);
     }
 
     var dims = JSON.parse(stdout);
@@ -31,7 +68,7 @@ exports.handler = function(event, context) {
 
     simpledb.putAttributes(params, function (error) {
       if (error) {
-        context.fail(formatError(key, error));
+        logErrorAndExit(context, key, error);
       }
 
       context.succeed(params);

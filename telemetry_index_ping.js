@@ -9,7 +9,7 @@ var simpledb = new AWS.SimpleDB();
 var cloudwatchlogs = new AWS.CloudWatchLogs();
 
 var v2DomainPrefix = "telemetry_v2_";
-var logGroupName = "/aws/lambda/telemetry_index_ping"
+var logGroupName = "/aws/lambda/telemetry_index"
 
 function formatError(key, error){
   return "Filename: " + key + " Error: " + error;
@@ -55,23 +55,31 @@ exports.handler = function(event, context) {
 
   exec('python telemetry_schema.py telemetry_v2_schema.json ' + key, function callback(error, stdout, stderr){
     if (error) {
-      logErrorAndExit(context, key, stderr);
+      return logErrorAndExit(context, key, stderr);
     }
 
     var dims = JSON.parse(stdout);
     var domain = v2DomainPrefix + dims["submission_date"].substring(0, dims["submission_date"].length - 2);
-    var params = {"Attributes": [], "DomainName": domain, "ItemName": key};
 
-    for (var prop in dims) {
-      params["Attributes"].push({"Name": prop, "Value": dims[prop]});
-    }
+    // Ensure domain exists
+    simpledb.createDomain({"DomainName": domain}, function(error, data) {
+      /*if (error) {
+        return logErrorAndExit(context, key, error);
+      }*/
 
-    simpledb.putAttributes(params, function (error) {
-      if (error) {
-        logErrorAndExit(context, key, error);
+      // Add file to index
+      var params = {"Attributes": [], "DomainName": domain, "ItemName": key};
+      for (var prop in dims) {
+        params["Attributes"].push({"Name": prop, "Value": dims[prop]});
       }
 
-      context.succeed(params);
+      simpledb.putAttributes(params, function (error) {
+        if (error) {
+          return logErrorAndExit(context, key, error);
+        }
+
+        context.succeed(params);
+      });
     });
   });
 };

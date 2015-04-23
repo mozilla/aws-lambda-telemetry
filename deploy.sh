@@ -6,7 +6,7 @@
 
 FILES="telemetry_index_ping.js telemetry_schema.py telemetry_v2_schema.json node_modules/"
 
-npm install node-uuid
+npm install node-uuid aws-sdk-promise promise
 aws s3 cp s3://telemetry-published-v2/telemetry_schema.json telemetry_v2_schema.json
 wget -N https://raw.githubusercontent.com/mozilla/telemetry-tools/master/telemetry/telemetry_schema.py
 zip -r lambda.zip $FILES
@@ -19,6 +19,6 @@ aws lambda upload-function \
   --role arn:aws:iam::142069644989:role/lambda_telemetry_index_ping \
   --handler telemetry_index_ping.handler \
   --mode event \
-  --timeout 3 \
+  --timeout 10 \
   --memory-size 128 \
   --region us-west-2

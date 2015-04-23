@@ -44,13 +44,11 @@ if __name__ == "__main__":
     conn = boto.logs.connect_to_region(region)
     events = []
 
-    for stream in get_streams(log_group_name, prefix):
+    streams = list(get_streams(log_group_name, prefix))
+    for idx, stream in enumerate(get_streams(log_group_name, prefix)):
         for event in get_events(stream):
-            if "error" in event["message"]:
+            if "error" in event["message"].lower():
                 utc = datetime.utcfromtimestamp(event["timestamp"]/1000)
                 time = utc.strftime("%Y/%m/%d %H:%S")
                 events.append((time, event["message"]))
-                print "Found: ", event["message"]
-
-    for event in reversed(events):
-        print event
+                print event["message"]

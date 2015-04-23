@@ -8,13 +8,17 @@ var simpledb = new AWS.SimpleDB();
 
 var v2DomainPrefix = "telemetry_v2_";
 
+function formatError(key, error){
+  return "Filename: " + key + " Error: " + error;
+}
+
 exports.handler = function(event, context) {
   var srcBucket = event.Records[0].s3.bucket.name;
   var key = event.Records[0].s3.object.key;
 
   exec('python telemetry_schema.py telemetry_v2_schema.json ' + key, function callback(error, stdout, stderr){
     if (error) {
-      context.fail(stderr);
+      context.fail(formatError(key, stderr));
     }
 
     var dims = JSON.parse(stdout);
@@ -27,7 +31,7 @@ exports.handler = function(event, context) {
 
     simpledb.putAttributes(params, function (error) {
       if (error) {
-        context.fail(error);
+        context.fail(formatError(key, error));
       }
 
       context.succeed(params);

@@ -57,8 +57,11 @@ exports.handler = function(event, context) {
   exec_promise('python telemetry_schema.py telemetry_v2_schema.json ' + key)
     .then(function(stdout) {
       var dims = JSON.parse(stdout);
-      var domain = v2DomainPrefix + dims["submission_date"].substring(0, dims["submission_date"].length - 2);
+      dims["submissionDate"] = dims["submission_date"];
+      dims["lambda"] = "true";
+      delete dims["submission_date"];
 
+      var domain = v2DomainPrefix + dims["submissionDate"].substring(0, dims["submissionDate"].length - 2);
       params = {"Attributes": [], "DomainName": domain, "ItemName": key};
       for (var prop in dims) {
         params["Attributes"].push({"Name": prop, "Value": dims[prop]});

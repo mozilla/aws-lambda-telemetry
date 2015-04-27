@@ -53,13 +53,26 @@ exports.handler = function(event, context) {
   var srcBucket = event.Records[0].s3.bucket.name;
   var key = event.Records[0].s3.object.key;
   var params = null;
+  var command = null;
 
-  exec_promise('python telemetry_schema.py telemetry_v2_schema.json ' + key)
+  console.log("Bucket: ", srcBucket)
+
+  if (srcBucket == "net-mozaws-prod-us-west-2-pipeline-data") { // V4
+    command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(10);
+  } else {
+    command = "python telemetry_schema.py telemetry_v2_schema.json " + key;
+  }
+
+  exec_promise(command)
     .then(function(stdout) {
       var dims = JSON.parse(stdout);
-      dims["submissionDate"] = dims["submission_date"];
       dims["lambda"] = "true";
+      dims["submissionDate"] = dims["submission_date"] || dims["submissionDate"];
       delete dims["submission_date"];
+
+      if (dims["reason"] == "idle_daily") {
+        return;
+      }
 
       var domain = v2DomainPrefix + dims["submissionDate"].substring(0, dims["submissionDate"].length - 2);
       params = {"Attributes": [], "DomainName": domain, "ItemName": key};
@@ -68,7 +81,7 @@ exports.handler = function(event, context) {
       }
       return simpledb.putAttributes(params).promise();  // Add file to index
     }).then(function () {
-      context.succeed(params);
+      context.succeed(params || "Submission ignored (idle-daily)");
     }).then(null, function(error) {
       return logErrorAndFail(context, key, error);
     });

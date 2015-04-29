@@ -58,6 +58,10 @@ exports.handler = function(event, context) {
   console.log("Bucket: ", srcBucket)
 
   if (srcBucket == "net-mozaws-prod-us-west-2-pipeline-data") { // V4
+    if (key.indexOf("telemetry/") != 0) {
+      context.succeed(params || "Submission ignored (landfill)");
+      return;
+    }
     command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(10);
   } else {
     command = "python telemetry_schema.py telemetry_v2_schema.json " + key;

@@ -12,6 +12,7 @@ var simpledb = new AWS.SimpleDB();
 var cloudwatchlogs = new AWS.CloudWatchLogs();
 
 var v2DomainPrefix = "telemetry_v2_";
+var v4DomainPrefix = "telemetry_v4_";
 var logGroupName = "/aws/lambda/telemetry_index_ping";
 
 function exec_promise(command) {
@@ -54,6 +55,7 @@ exports.handler = function(event, context) {
   var key = event.Records[0].s3.object.key;
   var params = null;
   var command = null;
+  var prefix = null;
 
   console.log("Bucket: ", srcBucket)
 
@@ -63,8 +65,10 @@ exports.handler = function(event, context) {
       return;
     }
     command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(10);
+    prefix = v4DomainPrefix;
   } else {
     command = "python telemetry_schema.py telemetry_v2_schema.json " + key;
+    prefix = v2DomainPrefix;
   }
 
   exec_promise(command)
@@ -78,7 +82,7 @@ exports.handler = function(event, context) {
         return;
       }
 
-      var domain = v2DomainPrefix + dims["submissionDate"].substring(0, dims["submissionDate"].length - 2);
+      var domain = prefix + dims["submissionDate"].substring(0, dims["submissionDate"].length - 2);
       params = {"Attributes": [], "DomainName": domain, "ItemName": key};
       for (var prop in dims) {
         params["Attributes"].push({"Name": prop, "Value": dims[prop]});

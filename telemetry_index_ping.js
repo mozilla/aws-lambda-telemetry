@@ -56,15 +56,16 @@ exports.handler = function(event, context) {
   var params = null;
   var command = null;
   var prefix = null;
+  var v4S3Prefix = "telemetry-2/";
 
   console.log("Bucket: ", srcBucket)
 
   if (srcBucket == "net-mozaws-prod-us-west-2-pipeline-data") { // V4
-    if (key.indexOf("telemetry/") != 0) {
+    if (key.indexOf(v4S3Prefix) != 0) {
       context.succeed(params || "Submission ignored (landfill)");
       return;
     }
-    command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(10);
+    command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(v4S3Prefix.length);
     prefix = v4DomainPrefix;
   } else {
     command = "python telemetry_schema.py telemetry_v2_schema.json " + key;

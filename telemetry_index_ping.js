@@ -11,8 +11,8 @@ var exec = require('child_process').exec;
 var simpledb = new AWS.SimpleDB();
 var cloudwatchlogs = new AWS.CloudWatchLogs();
 
-var v2DomainPrefix = "telemetry_v2_";
 var v4DomainPrefix = "telemetry_v4_";
+var v4ReleaseDomainPrefix = "telemetry-release_";
 var logGroupName = "/aws/lambda/telemetry_index_ping";
 
 function exec_promise(command) {
@@ -30,7 +30,7 @@ function logErrorAndFail(context, key, error) {
   var params = {
     logGroupName: logGroupName,
     logStreamName: logStreamName
-  }
+  };
 
   return cloudwatchlogs.createLogStream(params).promise().then(function (req) {
     params = {
@@ -41,7 +41,7 @@ function logErrorAndFail(context, key, error) {
       logGroupName: logGroupName,
       logStreamName: logStreamName
     };
-    return cloudwatchlogs.putLogEvents(params).promise()
+    return cloudwatchlogs.putLogEvents(params).promise();
   }).then(function() {
     context.fail(message);
   }, function(error) {
@@ -57,31 +57,30 @@ exports.handler = function(event, context) {
   var command = null;
   var prefix = null;
   var v4S3Prefix = "telemetry-2/";
+  var v4S3ReleasePrefix = "telemetry-release/";
 
-  console.log("Bucket: ", srcBucket)
+  console.log("Bucket: ", srcBucket);
 
-  if (srcBucket == "net-mozaws-prod-us-west-2-pipeline-data") { // V4
-    if (key.indexOf(v4S3Prefix) != 0) {
-      context.succeed(params || "Submission ignored (landfill)");
+  if (srcBucket == "net-mozaws-prod-us-west-2-pipeline-data") {
+    if (key.indexOf(v4S3ReleasePrefix) == 0) {
+      command = "python telemetry_schema.py telemetry_v4_release_schema.json " + key.substr(v4S3ReleasePrefix.length);
+      prefix = v4ReleaseDomainPrefix;
+    } else if (key.indexOf(v4S3Prefix) == 0) {
+      command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(v4S3Prefix.length);
+      prefix = v4DomainPrefix;
+    } else {
+      context.succeed(params || "Submission ignored");
       return;
     }
-    command = "python telemetry_schema.py telemetry_v4_schema.json " + key.substr(v4S3Prefix.length);
-    prefix = v4DomainPrefix;
   } else {
-    command = "python telemetry_schema.py telemetry_v2_schema.json " + key;
-    prefix = v2DomainPrefix;
+    context.succeed(params || "Submission ignored (unknown bucket)");
+    return;
   }
 
   exec_promise(command)
     .then(function(stdout) {
       var dims = JSON.parse(stdout);
       dims["lambda"] = "true";
-      dims["submissionDate"] = dims["submission_date"] || dims["submissionDate"];
-      delete dims["submission_date"];
-
-      if (dims["reason"] == "idle_daily") {
-        return;
-      }
 
       var domain = prefix + dims["submissionDate"].substring(0, dims["submissionDate"].length - 2);
       params = {"Attributes": [], "DomainName": domain, "ItemName": key};

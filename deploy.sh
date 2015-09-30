@@ -6,11 +6,18 @@
 
 FILES="telemetry_index_ping.js telemetry_schema.py telemetry_v2_schema.json telemetry_v4_schema.json telemetry_v4_release_schema.json node_modules/ schema/"
 FUNCTION_NAME=telemetry_index_ping
+METADATA_BUCKET=net-mozaws-prod-us-west-2-pipeline-metadata
 
-for prefix in telemetry-2 telemetry-release
+aws s3 cp s3://$METADATA_BUCKET/sources.json sources.json
+
+for source in telemetry telemetry-release
 do
-    mkdir -p schema/$prefix
-    aws s3 cp s3://net-mozaws-prod-us-west-2-pipeline-metadata/$prefix/schema.json schema/$prefix/schema.json
+    bucket=$(jq -r ".\"$source\" | .bucket" sources.json)
+    prefix=$(jq -r ".\"$source\" | .prefix" sources.json)
+    dir=schema/$bucket/$prefix
+
+    mkdir -p $dir
+    aws s3 cp s3://$METADATA_BUCKET/$prefix/schema.json $dir
 done
 
 npm install node-uuid aws-sdk-promise promise
@@ -26,7 +33,7 @@ aws lambda create-function \
   --role arn:aws:iam::142069644989:role/lambda_telemetry_index_ping \
   --handler telemetry_index_ping.handler \
   --description "Index Telemetry files in SimpleDB" \
-  --timeout 10 \
+  --timeout 15 \
   --zip-file fileb://lambda.zip \
   --memory-size 128 \
   --region us-west-2

@@ -13,7 +13,6 @@ var assert = require('assert');
 var simpledb = new AWS.SimpleDB();
 var cloudwatchlogs = new AWS.CloudWatchLogs();
 var logGroupName = "/aws/lambda/telemetry_index_ping";
-var prodBucket = "net-mozaws-prod-us-west-2-pipeline-data";
 
 function exec_promise(command) {
     return new Promise(function(resolve, reject) {
@@ -62,14 +61,16 @@ exports.handler = function(event, context) {
     var prefix = path[0];
     var params = null;
     var command = null;
-    var prefixes = fs.readdirSync("schema");
+    var buckets = fs.readdirSync("schema");
 
     console.log("Bucket: ", srcBucket);
     console.log("Key: ", key);
 
-    if (srcBucket == prodBucket) {
+    if(buckets.indexOf(srcBucket) != -1) {
+        var prefixes = fs.readdirSync("schema/" + srcBucket);
+
         if (prefixes.indexOf(prefix) != -1) {
-            command = "python telemetry_schema.py schema/" + prefix + "/schema.json " + path.slice(1).join("/");
+            command = "python telemetry_schema.py schema/" + srcBucket + "/" + prefix + "/schema.json " + path.slice(1).join("/");
         } else {
             context.succeed(params || "Submission ignored (unknown prefix)");
             return;
@@ -98,7 +99,9 @@ exports.handler = function(event, context) {
 };
 
 if (require.main === module) {
-    dummy_prerelease = {
+    var prodBucket = "net-mozaws-prod-us-west-2-pipeline-data";
+
+    prerelease = {
         "Records": [
             {
                 "s3": {
@@ -113,7 +116,7 @@ if (require.main === module) {
         ]
     };
 
-    dummy_release = {
+    release = {
         "Records": [
             {
                 "s3": {
@@ -128,8 +131,8 @@ if (require.main === module) {
         ]
     };
 
-    var dummy_context = {"succeed": function() {console.log.apply(this, arguments)},
-                         "fail": function() {console.log.apply(this, arguments) && assert(false)}};
-    exports.handler(dummy_prerelease, dummy_context);
-    exports.handler(dummy_release, dummy_context);
+    var context = {"succeed": function() {console.log.apply(this, arguments)},
+                   "fail": function() {console.log.apply(this, arguments) && assert(false)}};
+    exports.handler(prerelease, context);
+    exports.handler(release, context);
 }

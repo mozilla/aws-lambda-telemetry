@@ -10,6 +10,8 @@ then
     exit 1
 fi
 
+cd ..
+
 FILES="telemetry_index_ping.js telemetry_schema.py telemetry_v2_schema.json telemetry_v4_schema.json telemetry_v4_release_schema.json node_modules/ schema/"
 FUNCTION_NAME=telemetry_index_ping
 METADATA_BUCKET=net-mozaws-prod-us-west-2-pipeline-metadata

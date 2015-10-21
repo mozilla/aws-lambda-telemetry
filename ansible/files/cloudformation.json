@@ -1,0 +1,54 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Cloudformation template for telemetry lambda functions",
+
+  "Resources": {
+    "TelemetryLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument":{
+          "Statement":[
+            {
+              "Effect":"Allow",
+              "Principal":{ "Service":[ "lambda.amazonaws.com" ] },
+              "Action":[ "sts:AssumeRole" ]
+            }
+          ]
+        },
+        "Policies": [{
+          "PolicyName": "lambda",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": ["logs:*"],
+                "Resource": "arn:aws:logs:*:*:*"
+              },
+              {
+                "Sid": "Stmt1430253481000",
+                "Effect": "Allow",
+                "Action": ["sdb:*"],
+                "Resource": ["*"]
+              },
+              {
+                "Sid": "Stmt1430253514000",
+                "Effect": "Allow",
+                "Action": ["sqs:*"],
+                "Resource": ["*"]
+              }
+            ]
+          }
+        }]
+      }
+    }
+  },
+
+  "Outputs": {
+    "Role": {
+      "Description": "Telemetry lambda role",
+      "Value": {"Ref": "TelemetryLambdaRole"}
+    }
+  }
+}

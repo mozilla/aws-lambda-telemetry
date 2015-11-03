@@ -11,10 +11,9 @@
         disable_rollback: true
         template: "files/cloudformation.json"
         tags:
-          type: "telemetry"
-          application: "spark"
+          Type: "spark"
+          App: "pipeline"
       register: cloudformation
 
     - debug: var=cloudformation
     - command: files/deploy.sh "{{account}}:role/{{cloudformation.stack_outputs.Role}}"
-
